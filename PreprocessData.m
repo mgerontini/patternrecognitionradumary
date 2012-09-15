@@ -5,68 +5,48 @@
 
 function [new_data] = PreprocessData(data)
 %%% PREPROCESSING %%%
-counter = 1;
-segmentx = [];
-segmenty = [];
-    tmpx= [];
-    tmpy = [];
-for i= 1:size(data(3,:),2)
 
-    if data(3,i) ~= 0
-        tmpx =[tmpx;data(1,i)];
-        tmpy =[tmpy;data(1,i)];
-    
+%%% eliminate beginning and ending silence %%%
+i = 1;
+N = size(data,2);
+while (data(3,i) == 0)
+    i = i+1; % go to the point when the character drawing began
+end
+data = data(:,i:end); % ignore the initial part when the mouse wasn't pressed
+N2 = size(data,2);
+flag = N2; % we want to trunk the ending "silence" as well; flag will be the index of the last time when the mouse button was pressed before exiting
+for i = N2 : -1 : 1
+    if (data(3,i) == 0)
+        flag = flag-1;
     else
-        if size(tmpx)~= 0 
-tmpx=tmpx';
-tmpy=tmpy';
-        segmentx(counter,:) = tmpx(1,:)
-        segmenty(counter,:) = tmpy(1,:)
-        end
-        tmpx = [];
-        tmpy=[];
-        counter = counter + 1
-        
+        break;
     end
 end
-
-
-outxNorm = segmentx - repmat(min(segmentx,[],2), 1, size(segmentx,2)) 
-outyNorm = segmenty - repmat(min(segmenty,[],2), 1, size(segmenty,2)) 
-
-  max_x = max(outxNorm,[],2)
-  max_y = max(outyNorm,[],2)
-
-
-    
-
-  con = 1;
-  for j= 1:size(data(3,:),2)
-
-    if data(3,j) ~= 0
-        
-       data(1,j)  =  data(1,j)/max_x(con);
-       data(2,j)  =  data(1,j)/max_y(con);
-    
-    
-    else 
-        con = con+1;
-        continue;
-    end 
-        
-  end
-  
-  
-
-    
+data = data(:,1:flag); % trunk the data from the right
 
 
 
+%%% normalize the size of character instead of AxB we want CxC
+%%% source : http://www.google.com/patents/EP0107196B1?cl=en %%%
+xmax = max(data(1,:),[],2);
+xmin = min(data(1,:),[],2);
+ymax = max(data(2,:),[],2);
+ymin = min(data(2,:),[],2);
 
+A = xmax-xmin;
+B = ymax-ymin;
+C = 0.3; % arbitary chosen constant
 
-
-new_data = data;
-
-
+for i = 1 : size(data,2)
+    data(1,i) = (C*(data(1,i)-xmin))/A;
+    data(2,i) = (C*(data(2,i)-ymin))/B;
 end
 
+%%% make the character start in the center of the drawing area %%%
+x_deviation = data(1,1) - 0.5;
+y_deviation = data(2,1) - 0.5;
+for i = 1 : size(data,2)
+    data(1,i) = data(1,i) - x_deviation;
+    data(2,i) = data(2,i) - y_deviation;
+end
+new_data = data;
