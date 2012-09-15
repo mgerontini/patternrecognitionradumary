@@ -2,103 +2,215 @@
 % Input: 3xN matrix containing x,y,b values
 % Output: a column vector of extracted features
 function [features,featureVector] = ExtractFeatures(data)
-%%% eliminate beginning and ending silence %%%
-i = 1;
-N = size(data,2);
-while (data(3,i) == 0)
-    i = i+1; % go to the point when the character drawing began
-end
-data = data(:,i:end); % ignore the initial part when the mouse wasn't pressed
-N2 = size(data,2);
-flag = N2; % we want to trunk the ending "silence" as well; flag will be the index of the last time when the mouse button was pressed before exiting
-for i = N2 : -1 : 1
-    if (data(3,i) == 0)
-        flag = flag-1;
-    end
-end
-data = data(:,1:flag); % trunk the data from the right
-featureVector = data;
-
-%%% make the character start in the center of the drawing area %%%
-x_deviation = featureVector(1,1) - 0.5;
-y_deviation = featureVector(2,1) - 0.5;
-for i = 1 : size(featureVector,2)
-    featureVector(1,i) = featureVector(1,i) - x_deviation;
-    featureVector(2,i) = featureVector(2,i) - y_deviation;
-end
-
-%%% normalize the size of character instead of AxB we want CxC
-%%% source : http://www.google.com/patents/EP0107196B1?cl=en %%%
-xmax = max(featureVector(1,:),[],2);
-xmin = min(featureVector(1,:),[],2);
-ymax = max(featureVector(2,:),[],2);
-ymin = min(featureVector(2,:),[],2);
-
-A = xmax-xmin
-B = ymax-ymin
-C = 2; % arbitary chosen constant
-
-for i = 1 : size(featureVector,2)
-    featureVector(1,i) = (C*(featureVector(1,i)-xmin))/A;
-    featureVector(2,i) = (C*(featureVector(2,i)-ymin))/B;
-end
+featureVector = PreprocessData(data);
 
 %%% extract the directions for the feature vector %%%
 %%% N = 0 , NE = 1, E = 2, ES = 3, S = 4, WS = 5, W = 6, WN = 7
-count = 1;
+count = 2;
+L = 0;
+ind = 1;
 prev_x = 0;
 prev_y = 0;
+N = size(featureVector(1,:));
 features= [];
+segment_size = 0;
 e = 0.001; % error rate
-while count < size(featureVector,2)
+ind_start = 1;
+N = 0;
+EN = 0;
+E = 0;
+ES = 0;
+S = 0;
+WS = 0;
+W = 0;
+WN = 0;
+first_zero = 0;
+
+pen_ups = sum(featureVector(3,:)==0)
+
+while count <= size(featureVector,2)
     
     
-    prev_x =  featureVector(1,count);
-    prev_y =  featureVector(2,count);
-    next_x = featureVector(1,count+1);
-    next_y = featureVector(2,count+1);
+    
+    if (featureVector(3,count-1) == 0) && (first_zero > 0) % if is a pen_up and is not the first one put -1 for directions and Length rate
+        features(1:2,ind) = -1;
+        ind_start = ind;
+           
+    elseif ((featureVector(3,count-1) == 0) && (first_zero ==0)) || (featureVector(3,count-1) == 1) %first penup or pendown fill with data direction and length rate
+       
+   if   (featureVector(3,count-1) == 1)
+        first_zero == 0 ;
+   end  
+   
+   %%%%%%%%%%%%%%% Find Direction %%%%%%%%%%%%%%
+    prev_x =  featureVector(1,count-1);
+    prev_y =  featureVector(2,count-1);
+    next_x = featureVector(1,count);
+    next_y = featureVector(2,count);
     
     diff_x = next_x - prev_x;
     diff_y = next_y - prev_y;
     
+    c = 0.3;
     
-    if (diff_y>e) && ((diff_x >= 0) && (diff_x <= e))
+    tan_theta = diff_y / (diff_x+ 0.000000001);
+    
+    angle = atand(tan_theta);
+    
+    
+    
+    if (diff_y >=0) && (diff_x >=0)
+        angle = angle;
         
-        features(count) = 0;
+    elseif (diff_y>=0)&&(diff_x<0)
+        angle = 180 + angle;
         
-    elseif (diff_y>e) && (diff_x >e)
+    elseif (diff_y<=0)&&(diff_x<0)
+        angle = 180 + angle;
         
-        features(count) = 1;
+    elseif (diff_y<=0)&&(diff_x>=0)
         
-        
-    elseif (diff_x>e) && ((diff_y >= 0) && (diff_y <= e))
-        features(count) = 2;
-        
-        
-    elseif (diff_y<-e) && (diff_x >e)
-        features(count) = 3;
-        
-        
-    elseif (diff_y<-e) && ((diff_x >= 0) && (diff_x <= e))
-        features(count) = 4;
-        
-    elseif (diff_y < -e) && (diff_x < -e)
-        features(count) = 5;
-        
-    elseif (diff_x<-e) && ((diff_y >= 0) && (diff_y <= e))
-        features(count) = 6;
+        angle = 360 + angle;
         
         
-    elseif  (diff_y>e) && (diff_x < -e)
-        features(count) = 7;
+        
+        
     end
     
-    count = count +1;
     
+    
+    
+    if ((angle >=350) && (angle<=20))   %east
+        
+        %  features(1,ind) = 0;
+        E = E + 1;
+        
+    elseif ((angle >20) && (angle<=75)) %northeast
+        
+        %  features(1,ind) = 1;
+        EN = EN + 1;
+        
+    elseif ((angle >75) && (angle<=115)) %north
+        
+        %  features(1,ind) = 2;
+        N = N + 1;
+        
+    elseif ((angle >115) && (angle<=160)) %northwest
+        
+        %  features(1,ind) = 3;
+        WN = WN + 1;
+        
+    elseif ((angle >160) && (angle<=200))  %west
+        
+        %  features(1,ind) = 4;
+        W = W + 1;
+        
+    elseif ((angle >200) && (angle<=250))  %southwest
+        
+        % features(1,ind) = 5;
+        WS = WS + 1;
+        
+        
+    elseif ((angle >250) && (angle<=290))  %S
+        
+        % features(1,ind) = 6;
+        S = S + 1;
+        
+    elseif ((angle >290) && (angle<=349))  %southeast
+        
+        % features(1,ind) = 7;
+        ES = ES + 1;
+    end
+    
+    
+ %%%%%%%%%%% END FIND DIRECTION %%%%%%%%%%%%%
+ 
+ %%%%%%% FIND RANGE LENGTH ENCODE IT%%%%%%%%%%%%%%
+    
+ % ENCODE LENGTH RATE TO 0,1,2,3
+    Ltmp = sqrt(diff_x^2 + diff_y^2);
+    Lcode = -1;
+    L = L + Ltmp;
+    if L <= 0.25 * c
+        Lcode = 0;
+    elseif (L <=0.5 * c) && (L > 0.25 * c)
+        Lcode = 1;
+    elseif (L <=0.75 * c) && (L > 0.5 * c)
+        Lcode = 2;
+    elseif (L >0.75 * c)
+        Lcode = 3;
+    end
+    
+    
+%%%%%%% END FIND RATE LENGTH %%%%%%%%%% 
+ 
+
+    if (featureVector(3,count-1) == 0) || (count == size(featureVector,2)) % if penup occur or you reach the maximum size 
+        
+        features(2,ind_start:ind) = Lcode;  %NEEDS REFACTORING FOR ONE STROKE ELEMENTS
+       
+        L = 0;
+        first_zero = first_zero + 1;
+    end 
+        
+    if pen_ups == 0  % if there is no more than one stroke
+        %SEPERATE THE LINES INTO SEGMENTS AND GET THE MOST POPULAR
+        %DIRECTION
+        if (segment_size == 4) || (count == size(featureVector,2))
+            
+            popularDir = [E ; EN ; N ; WN; W; WS; S; ES]';
+            [tmp , pop] = max(popularDir,[],2);
+            features(1,ind_start:ind) =pop-1;
+            N = 0;
+            EN = 0;
+            E = 0;
+            ES = 0;
+            S = 0;
+            WS = 0;
+            W = 0;
+            WN = 0;
+           segment_size = 0;
+            
+        end
+    elseif pen_ups>0 % if there are more than one strokes
+        
+        %%%TODO NEEDS DEBBUGING %%%%
+        
+        if(featureVector(3,count-1) == 0)  || (count == size(featureVector,2))  % get each stroke
+         %  if (segment_size == 5) || (count == size(featureVector,2))
+               count
+                popularDir = [E ; EN ; N ; WN; W; WS; S; ES]'
+                [tmp , pop] = max(popularDir,[],2);
+                features(1,ind_start:ind) =pop-1;  %FEEL THE DIRECTIONS FROM THE FIRST PENDOWN UNTIL YOU HAVE A PENUP
+                segment_size = 0;
+                N = 0;
+                EN = 0;
+                E = 0;
+                ES = 0;
+                S = 0;
+                WS = 0;
+                W = 0;
+                WN = 0;
+               first_zero = first_zero + 1;
+               
+         end
+       %  end
+        
+    end   %pen_ups
+         
+         ind_start = ind; %%PROBLEMATIC WHEN I HAVE PENUPS
+         segment_size = segment_size + 1; 
+         
+    end
+    
+   
+    count = count +1;
+    ind = ind+1;
+  
     
 end
-features
-featureVector
+
+
 end
 
 
