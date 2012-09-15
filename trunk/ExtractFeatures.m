@@ -25,22 +25,36 @@ WS = 0;
 W = 0;
 WN = 0;
 first_zero = 0;
-
+zer = 0;
+size_v = size(featureVector,2)
 pen_ups = sum(featureVector(3,:)==0)
+end_ = 0;
+start_ = 0;
 
-while count <= size(featureVector,2)
+
+while count <= size_v
     
-    
+  start_
+  end_
     
     if (featureVector(3,count-1) == 0) && (first_zero > 0) % if is a pen_up and is not the first one put -1 for directions and Length rate
         features(1:2,ind) = -1;
-        ind_start = ind;
+        start_ = ind;
+       if featureVector(3,count) == 1
+        start_ = count;
+       end
            
     elseif ((featureVector(3,count-1) == 0) && (first_zero ==0)) || (featureVector(3,count-1) == 1) %first penup or pendown fill with data direction and length rate
        
    if   (featureVector(3,count-1) == 1)
+       
         first_zero == 0 ;
    end  
+   
+   if (count - 1) == 1 %% first element
+       start_ = 1;
+       
+   end
    
    %%%%%%%%%%%%%%% Find Direction %%%%%%%%%%%%%%
     prev_x =  featureVector(1,count-1);
@@ -146,8 +160,8 @@ while count <= size(featureVector,2)
  
 
     if (featureVector(3,count-1) == 0) || (count == size(featureVector,2)) % if penup occur or you reach the maximum size 
-        
-        features(2,ind_start:ind) = Lcode;  %NEEDS REFACTORING FOR ONE STROKE ELEMENTS
+
+        features(2,start_:end_) = Lcode;  %NEEDS REFACTORING FOR ONE STROKE ELEMENTS
        
         L = 0;
         first_zero = first_zero + 1;
@@ -160,7 +174,7 @@ while count <= size(featureVector,2)
             
             popularDir = [E ; EN ; N ; WN; W; WS; S; ES]';
             [tmp , pop] = max(popularDir,[],2);
-            features(1,ind_start:ind) =pop-1;
+            features(1,start_:end_) =pop-1;
             N = 0;
             EN = 0;
             E = 0;
@@ -176,12 +190,19 @@ while count <= size(featureVector,2)
         
         %%%TODO NEEDS DEBBUGING %%%%
         
-        if(featureVector(3,count-1) == 0)  || (count == size(featureVector,2))  % get each stroke
+        
+        if(featureVector(3,count-1) == 0)  || ((count -1) == (size_v-1))  % get each stroke
          %  if (segment_size == 5) || (count == size(featureVector,2))
-               count
+               
+               if count == size_v
+                   count
+               end
                 popularDir = [E ; EN ; N ; WN; W; WS; S; ES]'
                 [tmp , pop] = max(popularDir,[],2);
-                features(1,ind_start:ind) =pop-1;  %FEEL THE DIRECTIONS FROM THE FIRST PENDOWN UNTIL YOU HAVE A PENUP
+                pop-1
+                
+                
+                features(1,start_:end_) = pop-1;  %FEEL THE DIRECTIONS FROM THE FIRST PENDOWN UNTIL YOU HAVE A PENUP
                 segment_size = 0;
                 N = 0;
                 EN = 0;
@@ -192,20 +213,22 @@ while count <= size(featureVector,2)
                 W = 0;
                 WN = 0;
                first_zero = first_zero + 1;
+             %  ind_start = count - 1;
                
          end
        %  end
-        
+       
     end   %pen_ups
          
-         ind_start = ind; %%PROBLEMATIC WHEN I HAVE PENUPS
+        
          segment_size = segment_size + 1; 
          
     end
     
    
     count = count +1;
-    ind = ind+1;
+    end_ = end_ + 1;
+    ind  = ind + 1;
   
     
 end
