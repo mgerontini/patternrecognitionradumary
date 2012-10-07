@@ -7,6 +7,10 @@
 
 
 function features = ExtractFeatures2(data)
+noise = 1 + 2.*randn(1,1);
+%noise = randn(1,1);
+
+
 %%%% FIND THE DIRECTION FOR EVERY FRAME %%%%
 for i = 1 : size(data, 2)-1
     differenced_data(:,i) = data(1:2,i+1) - data(1:2,i); % contains delta_x and delta_y
@@ -16,9 +20,9 @@ for i = 1 : size(differenced_data,2)
     % the 1st feature; note that some 0-mean noise is added to avoid long
     % stretches of constant values
     if (data(3,i) ~= 0) % only calculate a direction when the pen is down, else set a direction of -500 (the angle is between -180 and 180, so -500 is not a valid angle)
-        features(1,i) = rad2deg(atan2(differenced_data(2,i),differenced_data(1,i))) + randn(1,1); % add some noise to avoid 0 variance
+        features(1,i) = rad2deg(atan2(differenced_data(2,i),differenced_data(1,i))) + (1 + 2.*randn(1,1)); % add some noise to avoid 0 variance
     else
-        features(1,i) = -500;
+        features(1,i) = -500 + (1 + 2.*randn(1,1));
     end
 end
 
@@ -52,11 +56,12 @@ if (numberOfStrokes > 1)
     
     for i = 1 : numberOfStrokes
         for j = stroke_begin(i) : stroke_end(i)
-            features(2,j) = lengthOfStroke(i) + 0.01*randn(1,1); % add a bit of noise to have some variance between values for frames in the same stroke
+            features(2,j) = lengthOfStroke(i) + ((1 + 2.*randn(1,1)));%0.01*randn(1,1); % add a bit of noise to have some variance between values for frames in the same stroke
             if (i ~= 1) % not the first stroke
-                features(3:4,j) = data(1:2,stroke_begin(i))-data(1:2,stroke_end(i-1)); % this is the x-offset between where the current stroke begins and where the previous one ended
+               
+                features(3:4,j) = (data(1:2,stroke_begin(i))-data(1:2,stroke_end(i-1))) ; % needs error % this is the x-offset between where the current stroke begins and where the previous one ended
             else
-                features(3:4,j) = 0.1*randn(1,1); % for the first stroke there is no offset, so we just put in a little 0-mean noise, instead of having 0 everywhere.
+                features(3:4,j) = (0 + 2.*randn(1,1)); % for the first stroke there is no offset, so we just put in a little 0-mean noise, instead of having 0 everywhere.
             end
         end
     end
@@ -67,7 +72,9 @@ if (numberOfStrokes == 1)
         features(2,i) = sqrt(differenced_data(1,i)^2+differenced_data(2,i)^2); % the length of a single frame
     end
     features(2,i+1) = features(2,i); % this is because the differenced data is 1 frame shorter than the normal data
-    features(3:4,:) = [differenced_data(1:2,:) differenced_data(1:2,end)]; % offset is taken for each frame, in the case of a single stroke character
+    n = size(differenced_data(1:2,:),1);
+    m = size(differenced_data(1:2,:),2);
+    features(3:4,:) = [differenced_data(1:2,:)+(1 + 2.*randn(n,m)) differenced_data(1:2,end)]; % offset is taken for each frame, in the case of a single stroke character
 end
 
 
