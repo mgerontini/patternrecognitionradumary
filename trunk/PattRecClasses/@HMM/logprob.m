@@ -23,18 +23,28 @@
 %Ref:   Arne Leijon (20xx): Pattern Recognition.
 %
 %----------------------------------------------------
-%Code Authors:
+%Code Authors: Anonymous
 %----------------------------------------------------
 
 function logP=logprob(hmm,x)
-hmmSize=size(hmm);%size of hmm array
-T=size(x,2);%number of vector samples in observed sequence
-logP=zeros(hmmSize);%space for result
-for i=1:numel(hmm)%for all HMM objects
-    %Note: array elements can always be accessed as hmm(i),
-    %regardless of hmmSize, even with a multi-dimensional array.
-    %
-    %logP(i)= result for hmm(i)
-    %continue coding from here, and delete the error message.
-    error('Not yet implemented');
-end;
+hmmSize=size(hmm);
+T=size(x,2);
+logP=zeros(hmmSize);
+for i=1:numel(hmm)
+    pr = 1;
+    [pX, logS] = prob(hmm(i).OutputDistr, x);
+    [alfaHat, c] = forward(hmm(i).StateGen,pX);
+     logP(i) = sum(log(c)) + sum(logS); 
+     
+%     for j = 1:length(logS)
+%         pr = pr*c(j)*exp(logS(j));
+%     end
+%      logP(i) = sum(log(c)) + sum(logS); 
+%     if length(c) == length(logS)
+%         logP(i) = sum(log(pr));
+%     else
+%         
+%         logP(i) = sum(log(pr)) + log(c(end));
+%     end
+end
+end
